@@ -38,4 +38,4 @@
 
 官网：https://www.docker.com/get-started
 
-![image-20200910011940453](D:\study\markdown\StudyNoteRepository\三、Docker学习笔记\images\image-20200910011940453.png)
+![image-20200910011940453](C:\dongxiaoyong\study\markdown\StudyNoteRepository\三、Docker学习笔记\images\image-20200910011940453.png)
