@@ -86,7 +86,7 @@
 
 在编写代码之前，我们先来简单了解下Spring Batch的组成：
 
-![image-20200912151637810](/images/image-20200912151447815.png)
+![image-20200912151447815](/images/image-20200912151447815.png)
 
 `Spring Batch`中最基本的单元就是任务`Job`，一个`Job`由多个步骤`Step`组成。任务启动器`Job Launcher`负责运行`Job`，任务存储仓库`Job Repository`存储着`Job`的运行状态、参数和日志等信息。`Job`处理任务又分为三大类：数据读取`Item Reader`、数据中间处理`Item Processor`和数据输出`Item Writer`。
 
