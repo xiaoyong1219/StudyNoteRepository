@@ -4,7 +4,7 @@
 
 `Spring Batch`是一个轻量级但功能又十分全面的批处理框架。下面通过一个简单的例子来入门`Spring Batch`。
 
-### 框架搭建
+### 1、框架搭建
 
 新建一个`Spring Boot`项目，版本为`2.3.2.RELEASE`, `artifactId`为`spring-batch-start`，项目结构入下图所示：
 
@@ -242,7 +242,7 @@ public class SpringBatchStartApplication {
 
 至此，基本框架搭建好了，下面开始配置一个简单的任务。
 
-### 编写第一个任务
+### 2、编写第一个任务
 
 在`com.dongxiayong.springbatchstart`包下新建job包，然后在该包下新建一个`FirstJobDemo`类，代码如下：
 
@@ -366,7 +366,7 @@ public interface Tasklet {
 
 > 重新启动项目，控制台并不会再次打印出任务执行日志，因为`Job`名称和 `Step`名称组成唯一，执行完的不可重复的任务，不会再次执行。
 
-### 多步骤任务
+### 3、多步骤任务
 
 一个复杂的任务一般包含多个步骤，下面举个多步骤任务的例子。在`job`包下面新建`MultiStepJobDemo`类：
 
@@ -778,7 +778,7 @@ public class ExitStatus implements Serializable, Comparable<ExitStatus> {
 
 ```
 
-### Flow的用法
+### 4、Flow的用法
 
 `Flow`的作用就是可以将多个步骤`Step`组合在一起然后再组装到任务`Job`中。举个`Flow`的例子，在`job`包下新建`FlowJobDemo`类：
 
@@ -888,6 +888,564 @@ public class FlowJobDemo {
 2020-09-12 16:46:14.604  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=flowJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 131ms
 ```
 
+### 5、并行执行
+
+任务中的步骤除了可以串行执行（一个接着一个执行）外，还可以并行执行，并行执行在特定的业务需求下可以提高任务执行效率。
+
+将任务并行化只需两个简单步骤：
+
+1. 将步骤`Step`转换为`Flow`；
+2. 任务`Job`中指定并行`Flow`。
+
+举个例子，在`job`包下面新建`SplitJobDemo`类：
+
+```java
+package com.dongxiayong.springbatchstart.job;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.job.builder.FlowBuilder;
+import org.springframework.batch.core.job.flow.Flow;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
+import org.springframework.stereotype.Component;
+
+/**
+ * Create By dongxiaoyong on /2020/8/13
+ * description: 并行job示例
+ *
+ * @author dongxiaoyong
+ */
+@Component
+public class SplitJobDemo {
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    /**
+     * 指定一个异步执行器，将flow1(step1-->step2)和flow2(step3)异步执行（也就是并行）。
+     *  step3并没有在step2后才执行，说明步骤已经是并行化的（开启并行化后，并行的步骤执行顺序并不能100%确定，因为线程调度具有不确定性）
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/13 23:53
+     * @return: org.springframework.batch.core.Job
+     */
+
+    @Bean
+    public Job splitJob() {
+        return jobBuilderFactory.get("splitJob")
+                .start(flow1())
+                .split(new SimpleAsyncTaskExecutor()).add(flow2())
+                .end()
+                .build();
+
+    }
+
+    private Step step1() {
+        return stepBuilderFactory.get("step1")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤一操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    private Step step2() {
+        return stepBuilderFactory.get("step2")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤二操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    private Step step3() {
+        return stepBuilderFactory.get("step3")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤三操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    /**
+     * 创建一个flow1：step1 ---> step2
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/13 23:51
+     * @return: org.springframework.batch.core.job.flow.Flow
+     */
+
+    private Flow flow1() {
+        return new FlowBuilder<Flow>("flow1")
+                .start(step1())
+                .next(step2())
+                .build();
+    }
+
+    /**
+     * 创建一个flow2：step3
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/13 23:52
+     * @return: org.springframework.batch.core.job.flow.Flow
+     */
+
+    private Flow flow2() {
+        return new FlowBuilder<Flow>("flow2")
+                .start(step3())
+                .build();
+    }
+}
+
+```
+
+上面的例子中，我们创建了两个`Flow`：`flow1`(包含`step1`和`step2`)和`flow2`(包含`step3`)。然后通过`JobBuilderFactory`的`split()`方法，指定一个异步执行器，将`flow1`和`flow2`异步执行（也就是并行）。启动项目，控制台打印日志如下：
+
+```java
+2020-09-12 16:46:15.349  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=splitJob]] launched with the following parameters: [{}]
+2020-09-12 16:46:15.392  INFO 4316 --- [cTaskExecutor-1] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
+2020-09-12 16:46:15.400  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
+执行步骤三操作。。。
+执行步骤一操作。。。
+2020-09-12 16:46:15.421  INFO 4316 --- [cTaskExecutor-1] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 29ms
+2020-09-12 16:46:15.422  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 21ms
+2020-09-12 16:46:15.445  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
+执行步骤二操作。。。
+2020-09-12 16:46:15.464  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 19ms
+2020-09-12 16:46:15.477  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=splitJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 123ms
+```
+
+可以看到`step3`并没有在`step2`后才执行，说明步骤已经是并行化的（开启并行化后，并行的步骤执行顺序并不能100%确定，因为线程调度具有不确定性）。
+
+### 6、任务决策器
+
+决策器的作用就是可以指定程序在不同的情况下运行不同的任务流程，比如今天是周末，则让任务执行`step1`和`step2`,如果是工作日，则执行`step1`和`step3`。
+
+使用决策器前，我们需要自定义一个决策器的实现。在`batch`包下面吗新建`decider`包，然后创建`MyDecider`类，实现`JobExecutionDecider`接口：
+
+```java
+package com.dongxiayong.springbatchstart.job;
+
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.job.flow.FlowExecutionStatus;
+import org.springframework.batch.core.job.flow.JobExecutionDecider;
+import org.springframework.stereotype.Component;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+
+/**
+ * Create By dongxiaoyong on /2020/8/13
+ * description: 任务决策器
+ * 决策器的作用就是可以指定程序在不同的情况下运行不同的任务流程，
+ * 比如今天是周末，则让任务执行step1和step2，如果是工作日，则执行step1和step3。
+ *
+ * @author dongxiaoyong
+ */
+@Component
+public class MyDecider implements JobExecutionDecider {
+
+    /**
+     * 构造一个任务决策器，
+     * 判断今天是否是周末，如果是，返回FlowExecutionStatus("weekend")状态，否则返回FlowExecutionStatus("workingDay")状态。
+     *
+     * @param jobExecution
+     * @param stepExecution
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:00
+     * @return: org.springframework.batch.core.job.flow.FlowExecutionStatus
+     */
+
+    @Override
+    public FlowExecutionStatus decide(JobExecution jobExecution, StepExecution stepExecution) {
+        LocalDate now = LocalDate.now();
+        DayOfWeek dayOfWeek = now.getDayOfWeek();
+        if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+            return new FlowExecutionStatus("weekend");
+        } else {
+            return new FlowExecutionStatus("workingDay");
+        }
+    }
+}
+
+```
+
+`MyDecider`实现`JobExcutionDecider`接口的`decide(JobExecution jobExecution, StepExecution stepExecution)`方法，该方法返回`FlowExecutionStatus`。上面的逻辑是：判断今天是否周末，如果是，返回`FlowExecutionStatus("weekend")`状态,否则返回`FlowExecutionStatus("workingDay")`状态。
+
+下面演示如何在任务`Job`里面使用决策器。在`job`包下新建`DeciderJobDemo`:
+
+```java
+package com.dongxiayong.springbatchstart.job;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
+
+/**
+ * Create By dongxiaoyong on /2020/8/14
+ * description: 任务决策器使用示例
+ *
+ * @author dongxiaoyong
+ */
+@Component
+public class DeciderJobDemo {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Autowired
+    private MyDecider myDecider;
+
+
+    /**
+     * 任务deciderJob首先执行step1，然后指定自定义决策器，
+     * 如果决策器返回weekend，那么执行step2，如果决策器返回workingDay，那么执行step3。
+     * 如果执行了step3，那么无论step3的结果是什么，都将执行step4。
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:08
+     * @return: org.springframework.batch.core.Job
+     */
+
+    @Bean
+    public Job deciderJob() {
+        return jobBuilderFactory.get("deciderJob")
+                .start(step1())
+                .next(myDecider)
+                .from(myDecider).on("weekend").to(step2())
+                .from(myDecider).on("workingDay").to(step3())
+                .from(step3()).on("*").to(step4())
+                .end()
+                .build();
+    }
+
+    private Step step1() {
+        return stepBuilderFactory.get("step1")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤一操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    private Step step2() {
+        return stepBuilderFactory.get("step2")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤二操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    private Step step3() {
+        return stepBuilderFactory.get("step3")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤三操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+
+    private Step step4() {
+        return stepBuilderFactory.get("step4")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("执行步骤四操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+}
+
+```
+
+上面代码中，我们注入了自定义决策器`MyDecider`，然后在`jobDecider()`方法里使用了该决策器：
+
+```java
+  @Bean
+    public Job deciderJob() {
+        return jobBuilderFactory.get("deciderJob")
+                .start(step1())
+                .next(myDecider)
+                .from(myDecider).on("weekend").to(step2())
+                .from(myDecider).on("workingDay").to(step3())
+                .from(step3()).on("*").to(step4())
+                .end()
+                .build();
+    }
+```
+
+这段代码的含义是：任务`deciderJob()`首先执行`step1`，然后指定自定义决策器，如果决策器返回`weekend`，那么执行`step2`，如果决策器返回`workingDay`，那么执行`step3`。如果执行`step3`，那么无论`step 3`的结果是什么，都将执行`step4`。启动项目，控制台输出如下所示：
+
+```java
+2020-09-12 16:46:14.170  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=deciderJob]] launched with the following parameters: [{}]
+2020-09-12 16:46:14.243  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
+执行步骤一操作。。。
+2020-09-12 16:46:14.280  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 36ms
+2020-09-12 16:46:14.316  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
+执行步骤二操作。。。
+2020-09-12 16:46:14.336  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 19ms
+2020-09-12 16:46:14.351  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=deciderJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 155ms
+```
+
+因为今天是2020年09月12日星期六，是周末，所以任务执行了`step1`、和`step2`。
+
+### 7、任务嵌套
+
+任务`Job`除了可以由`Step`或者`Flow`构成外，我们还可以将多个任务`Job`转换为特殊的`Step`，然后再赋给另一个任务`Job`，这就是任务的嵌套。
+
+举个例子，在`job`包下新建`NestedJobDemo`类：
+
+```java
+package com.dongxiayong.springbatchstart.job;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.JobStepBuilder;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+
+/**
+ * Create By dongxiaoyong on /2020/8/14
+ * description: 任务嵌套示例
+ *
+ * @author dongxiaoyong
+ */
+@Component
+public class NestedJobDemo {
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+    @Autowired
+    private JobLauncher jobLauncher;
+    @Autowired
+    private JobRepository jobRepository;
+    @Autowired
+    private PlatformTransactionManager platformTransactionManager;
+
+    /**
+     * 父任务: 包含两个特殊步骤【子任务一（step1 --> step2）转换后的特殊步骤、子任务二（step3 --> stpe4）转换后的特殊步骤】
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:27
+     * @return: org.springframework.batch.core.Job
+     */
+
+    @Bean
+    public Job parentJob() {
+        return jobBuilderFactory.get("parentJob2")
+                .start(childJobOneStep())
+                .next(childJobTwoStep())
+                .build();
+    }
+
+
+    /**
+     * 将子任务二转换为特殊的步骤
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:25
+     * @return: org.springframework.batch.core.Step
+     */
+
+    private Step childJobOneStep() {
+        return new JobStepBuilder(new StepBuilder("childJobOneStep"))
+                .job(childJobOne())
+                .launcher(jobLauncher)
+                .repository(jobRepository)
+                .transactionManager(platformTransactionManager)
+                .build();
+    }
+
+    /**
+     * 将子任务二转换为特殊的步骤
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:25
+     * @return: org.springframework.batch.core.Step
+     */
+
+    private Step childJobTwoStep() {
+        return new JobStepBuilder(new StepBuilder("childJobTwoStep"))
+                .job(childJobTwo())
+                .launcher(jobLauncher)
+                .repository(jobRepository)
+                .transactionManager(platformTransactionManager)
+                .build();
+    }
+
+    /**
+     * 子任务一：step1 --> step2
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:23
+     * @return: org.springframework.batch.core.Job
+     */
+
+    private Job childJobOne() {
+        return jobBuilderFactory.get("childJobOne")
+                .start(step1())
+                .next(step2())
+                .build();
+    }
+
+    /**
+     * 子任务二：step3 --> step4
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:24
+     * @return: org.springframework.batch.core.Job
+     */
+
+    private Job childJobTwo() {
+        return jobBuilderFactory.get("childJobTwo")
+                .start(step3())
+                .next(step4())
+                .build();
+    }
+
+
+    /**
+     * 步骤一
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:34
+     * @return: org.springframework.batch.core.Step
+     */
+
+    private Step step1() {
+        return stepBuilderFactory.get("step1")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("子任务一执行步骤一操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    /**
+     * 步骤二
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:34
+     * @return: org.springframework.batch.core.Step
+     */
+
+    private Step step2() {
+        return stepBuilderFactory.get("step2")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("子任务一执行步骤二操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    /**
+     * 步骤三
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:37
+     * @return: org.springframework.batch.core.Step
+     */
+
+    private Step step3() {
+        return stepBuilderFactory.get("step3")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("子任务二执行步骤三操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+
+    /**
+     * 步骤四
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/8/14 0:37
+     * @return: org.springframework.batch.core.Step
+     */
+
+    private Step step4() {
+        return stepBuilderFactory.get("step4")
+                .tasklet((stepContribution, chunkContext) -> {
+                    System.out.println("子任务二执行步骤四操作。。。");
+                    return RepeatStatus.FINISHED;
+                }).build();
+    }
+}
+
+```
+
+上面代码中，我们通过`childJobOne()`和`childJobTwo()`方法创建了两个`Job`，在``childJobOneStep()`方法中，我们通过`JobStepBuilder`构建了一个名称为`childJobOneStep`的`Step`，顾名思义，它是一个任务型`Step`的构造工厂，可以将任务转换为”特殊“的步骤。在构建过程中，我们还需要传入任务执行器`JobLauncher`、任务仓库`JobRepository`和事务管理器`PlatformTransactionManager`。
+
+将任务转换为特殊的步骤后，将其赋给父任务`parentJob`即可，流程和前面介绍的一致。
+
+配置好后，启动项目，控制台输出如下所示：
+
+```java
+2020-09-12 16:46:14.992  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=parentJob2]] launched with the following parameters: [{}]
+2020-09-12 16:46:15.014  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [childJobOneStep]
+2020-09-12 16:46:15.047  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobOne]] launched with the following parameters: [{}]
+2020-09-12 16:46:15.069  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
+子任务一执行步骤一操作。。。
+2020-09-12 16:46:15.089  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 20ms
+2020-09-12 16:46:15.111  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
+子任务一执行步骤二操作。。。
+2020-09-12 16:46:15.128  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 17ms
+2020-09-12 16:46:15.142  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobOne]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 89ms
+2020-09-12 16:46:15.179  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [childJobOneStep] executed in 165ms
+2020-09-12 16:46:15.197  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [childJobTwoStep]
+2020-09-12 16:46:15.216  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobTwo]] launched with the following parameters: [{}]
+2020-09-12 16:46:15.236  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
+子任务二执行步骤三操作。。。
+2020-09-12 16:46:15.253  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 17ms
+2020-09-12 16:46:15.275  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step4]
+子任务二执行步骤四操作。。。
+2020-09-12 16:46:15.293  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step4] executed in 18ms
+2020-09-12 16:46:15.310  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobTwo]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 88ms
+2020-09-12 16:46:15.315  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [childJobTwoStep] executed in 118ms
+2020-09-12 16:46:15.328  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=parentJob2]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 330ms
+```
+
+## 二、Spring Batch读取数据
+
+`Spring Batch`读取数据通过`ItemReader`接口的实现类来实现，包括`FlatFileItemReader`文本数据读取、`StaxEventItemReader` `XML`文件数据读取、`JsonItemReader` `JSON`文件数据读取、`JdbcPagingItemReader` 数据库分页数据读取等实现，更多可用可以参考：https://docs.spring.io/spring-batch/docs/4.2.x/reference/html/appendix.html#itemReadersAppendix，这里只介绍这四种比较常用的读取数据方式。
+
+### 一、框架搭建
+
+参照上面的笔记`Spring Batch入门`来搭建，我这里直接用上面的项目来进行演示。
+
+
+
+
+
+
+
 
 
 
@@ -897,15 +1455,7 @@ public class FlowJobDemo {
 >  日志
 
 ```java
-"C:\Program Files\Java\jdk1.8.0_40\bin\java.exe" -XX:TieredStopAtLevel=1 -noverify -Dspring.output.ansi.enabled=always -Dcom.sun.management.jmxremote -Dspring.jmx.enabled=true -Dspring.liveBeansView.mbeanDomain -Dspring.application.admin.enabled=true "-javaagent:C:\Program Files\JetBrains\IntelliJ IDEA 2019.2.1\lib\idea_rt.jar=52011:C:\Program Files\JetBrains\IntelliJ IDEA 2019.2.1\bin" -Dfile.encoding=UTF-8 -classpath "C:\Program Files\Java\jdk1.8.0_40\jre\lib\charsets.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\deploy.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\access-bridge-64.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\cldrdata.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\dnsns.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\jaccess.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\jfxrt.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\localedata.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\nashorn.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\sunec.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\sunjce_provider.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\sunmscapi.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\sunpkcs11.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\ext\zipfs.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\javaws.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\jce.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\jfr.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\jfxswt.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\jsse.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\management-agent.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\plugin.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\resources.jar;C:\Program Files\Java\jdk1.8.0_40\jre\lib\rt.jar;C:\dongxiaoyong\study\ideaworkspace\MySpringStudyAll\spring-batch-start\target\classes;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter-batch\2.3.2.RELEASE\spring-boot-starter-batch-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter\2.3.2.RELEASE\spring-boot-starter-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot\2.3.2.RELEASE\spring-boot-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-autoconfigure\2.3.2.RELEASE\spring-boot-autoconfigure-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter-logging\2.3.2.RELEASE\spring-boot-starter-logging-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\ch\qos\logback\logback-classic\1.2.3\logback-classic-1.2.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\ch\qos\logback\logback-core\1.2.3\logback-core-1.2.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\apache\logging\log4j\log4j-to-slf4j\2.13.3\log4j-to-slf4j-2.13.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\apache\logging\log4j\log4j-api\2.13.3\log4j-api-2.13.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\slf4j\jul-to-slf4j\1.7.30\jul-to-slf4j-1.7.30.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\jakarta\annotation\jakarta.annotation-api\1.3.5\jakarta.annotation-api-1.3.5.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\yaml\snakeyaml\1.26\snakeyaml-1.26.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\batch\spring-batch-core\4.2.4.RELEASE\spring-batch-core-4.2.4.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\fasterxml\jackson\core\jackson-databind\2.11.1\jackson-databind-2.11.1.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\fasterxml\jackson\core\jackson-annotations\2.11.1\jackson-annotations-2.11.1.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\fasterxml\jackson\core\jackson-core\2.11.1\jackson-core-2.11.1.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\io\micrometer\micrometer-core\1.5.3\micrometer-core-1.5.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\hdrhistogram\HdrHistogram\2.1.12\HdrHistogram-2.1.12.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\latencyutils\LatencyUtils\2.0.3\LatencyUtils-2.0.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\javax\batch\javax.batch-api\1.0\javax.batch-api-1.0.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\codehaus\jettison\jettison\1.2\jettison-1.2.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\batch\spring-batch-infrastructure\4.2.4.RELEASE\spring-batch-infrastructure-4.2.4.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\retry\spring-retry\1.2.5.RELEASE\spring-retry-1.2.5.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-aop\5.2.8.RELEASE\spring-aop-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-beans\5.2.8.RELEASE\spring-beans-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-context\5.2.8.RELEASE\spring-context-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-tx\5.2.8.RELEASE\spring-tx-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter-web\2.3.2.RELEASE\spring-boot-starter-web-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter-json\2.3.2.RELEASE\spring-boot-starter-json-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\fasterxml\jackson\datatype\jackson-datatype-jdk8\2.11.1\jackson-datatype-jdk8-2.11.1.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.11.1\jackson-datatype-jsr310-2.11.1.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\fasterxml\jackson\module\jackson-module-parameter-names\2.11.1\jackson-module-parameter-names-2.11.1.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter-tomcat\2.3.2.RELEASE\spring-boot-starter-tomcat-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\apache\tomcat\embed\tomcat-embed-core\9.0.37\tomcat-embed-core-9.0.37.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\glassfish\jakarta.el\3.0.3\jakarta.el-3.0.3.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\apache\tomcat\embed\tomcat-embed-websocket\9.0.37\tomcat-embed-websocket-9.0.37.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-web\5.2.8.RELEASE\spring-web-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-webmvc\5.2.8.RELEASE\spring-webmvc-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-expression\5.2.8.RELEASE\spring-expression-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\slf4j\slf4j-api\1.7.30\slf4j-api-1.7.30.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-core\5.2.8.RELEASE\spring-core-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-jcl\5.2.8.RELEASE\spring-jcl-5.2.8.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\mysql\mysql-connector-java\8.0.21\mysql-connector-java-8.0.21.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\boot\spring-boot-starter-jdbc\2.3.2.RELEASE\spring-boot-starter-jdbc-2.3.2.RELEASE.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\com\zaxxer\HikariCP\3.4.5\HikariCP-3.4.5.jar;C:\dongxiaoyong\tools\apache-maven-3.3.9\repository\org\springframework\spring-jdbc\5.2.8.RELEASE\spring-jdbc-5.2.8.RELEASE.jar" com.dongxiayong.springbatchstart.SpringBatchStartApplication
 
-  .   ____          _            __ _ _
- /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
-( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
- \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
-  '  |____| .__|_| |_|_| |_\__, | / / / /
- =========|_|==============|___/=/_/_/_/
- :: Spring Boot ::        (v2.3.2.RELEASE)
 
 2020-09-12 16:46:12.434  INFO 4316 --- [           main] c.d.s.SpringBatchStartApplication        : Starting SpringBatchStartApplication on DESKTOP-DFNK1QQ with PID 4316 (C:\dongxiaoyong\study\ideaworkspace\MySpringStudyAll\spring-batch-start\target\classes started by dongxiaoyong in C:\dongxiaoyong\study\ideaworkspace\MySpringStudyAll\spring-batch-start)
 2020-09-12 16:46:12.437  INFO 4316 --- [           main] c.d.s.SpringBatchStartApplication        : No active profile set, falling back to default profiles: default
