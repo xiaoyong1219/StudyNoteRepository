@@ -1436,88 +1436,117 @@ public class NestedJobDemo {
 
 `Spring Batch`读取数据通过`ItemReader`接口的实现类来实现，包括`FlatFileItemReader`文本数据读取、`StaxEventItemReader` `XML`文件数据读取、`JsonItemReader` `JSON`文件数据读取、`JdbcPagingItemReader` 数据库分页数据读取等实现，更多可用可以参考：https://docs.spring.io/spring-batch/docs/4.2.x/reference/html/appendix.html#itemReadersAppendix，这里只介绍这四种比较常用的读取数据方式。
 
-### 一、框架搭建
+### 1、框架搭建
 
-参照上面的笔记`Spring Batch入门`来搭建，我这里直接用上面的项目来进行演示。
+参照上面的笔记`一、Spring Batch入门`来搭建，我这里直接用上面的项目来进行演示。
 
+### 2、简单数据读取
 
+前面到，`Spring Batch`读取数据是通过`ItemReader`接口的实现类来实现的，所以我们可以自定义一个`ItemReader`的实现类，实现简单数据的读取。
 
-
-
-
-
-
-
-
-
-
-
->  日志
+在`com.dongxiayong.springbatchstart`包下新建`reader`包，然后在该包下新建`ItemReader`接口的实现类`MySimpleItemReader`:
 
 ```java
+package com.dongxiayong.springbatchstart.reader;
 
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.NonTransientResourceException;
+import org.springframework.batch.item.ParseException;
+import org.springframework.batch.item.UnexpectedInputException;
 
-2020-09-12 16:46:12.434  INFO 4316 --- [           main] c.d.s.SpringBatchStartApplication        : Starting SpringBatchStartApplication on DESKTOP-DFNK1QQ with PID 4316 (C:\dongxiaoyong\study\ideaworkspace\MySpringStudyAll\spring-batch-start\target\classes started by dongxiaoyong in C:\dongxiaoyong\study\ideaworkspace\MySpringStudyAll\spring-batch-start)
-2020-09-12 16:46:12.437  INFO 4316 --- [           main] c.d.s.SpringBatchStartApplication        : No active profile set, falling back to default profiles: default
-2020-09-12 16:46:13.320  INFO 4316 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
-2020-09-12 16:46:13.330  INFO 4316 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2020-09-12 16:46:13.330  INFO 4316 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.37]
-2020-09-12 16:46:13.423  INFO 4316 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2020-09-12 16:46:13.423  INFO 4316 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 944 ms
-2020-09-12 16:46:13.694  INFO 4316 --- [           main] o.s.s.concurrent.ThreadPoolTaskExecutor  : Initializing ExecutorService 'applicationTaskExecutor'
-2020-09-12 16:46:13.828  INFO 4316 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2020-09-12 16:46:13.940  INFO 4316 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2020-09-12 16:46:13.960  INFO 4316 --- [           main] o.s.b.c.r.s.JobRepositoryFactoryBean     : No database type set, using meta data indicating: MYSQL
-2020-09-12 16:46:13.974  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : No TaskExecutor has been set, defaulting to synchronous executor.
-2020-09-12 16:46:14.056  INFO 4316 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
-2020-09-12 16:46:14.068  INFO 4316 --- [           main] c.d.s.SpringBatchStartApplication        : Started SpringBatchStartApplication in 2.06 seconds (JVM running for 3.762)
-2020-09-12 16:46:14.070  INFO 4316 --- [           main] o.s.b.a.b.JobLauncherApplicationRunner   : Running default command line with: []
-2020-09-12 16:46:14.170  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=deciderJob]] launched with the following parameters: [{}]
-2020-09-12 16:46:14.243  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
-执行步骤一操作。。。
-2020-09-12 16:46:14.280  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 36ms
-2020-09-12 16:46:14.316  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
-执行步骤二操作。。。
-2020-09-12 16:46:14.336  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 19ms
-2020-09-12 16:46:14.351  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=deciderJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 155ms
-2020-09-12 16:46:14.387  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=firstJob]] launched with the following parameters: [{}]
-2020-09-12 16:46:14.410  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step]
-执行步骤....
-2020-09-12 16:46:14.431  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step] executed in 21ms
-2020-09-12 16:46:14.444  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=firstJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 51ms
-2020-09-12 16:46:14.468  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=flowJob]] launched with the following parameters: [{}]
-2020-09-12 16:46:14.491  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
-执行步骤一操作。。。
-2020-09-12 16:46:14.512  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 21ms
-2020-09-12 16:46:14.539  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
-执行步骤二操作。。。
-2020-09-12 16:46:14.556  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 17ms
-2020-09-12 16:46:14.576  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
-执行步骤三操作。。。
-2020-09-12 16:46:14.592  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 15ms
-2020-09-12 16:46:14.604  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=flowJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 131ms
-2020-09-12 16:46:14.624  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=multiStepJob]] launched with the following parameters: [{}]
-2020-09-12 16:46:14.643  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
-执行步骤一操作。。。
-2020-09-12 16:46:14.661  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 18ms
-2020-09-12 16:46:14.680  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
-执行步骤二操作。。。
-2020-09-12 16:46:14.698  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 17ms
-2020-09-12 16:46:14.720  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
-执行步骤三操作。。。
-2020-09-12 16:46:14.738  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 17ms
-2020-09-12 16:46:14.749  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=multiStepJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 119ms
-2020-09-12 16:46:14.768  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=multiStepJob2]] launched with the following parameters: [{}]
-2020-09-12 16:46:14.791  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
-执行步骤一操作。。。
-2020-09-12 16:46:14.806  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 15ms
-2020-09-12 16:46:14.827  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
-执行步骤二操作。。。
-2020-09-12 16:46:14.842  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 15ms
-2020-09-12 16:46:14.862  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
-执行步骤三操作。。。
-2020-09-12 16:46:14.881  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 18ms
-2020-09-12 16:46:14.891  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=multiStepJob2]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 118ms
+import java.io.Serializable;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * Create By dongxiaoyong on /2020/8/14
+ * description: reader
+ *   Spring Batch读取数据通过ItemReader接口的实现类来完成，
+ *  包括FlatFileItemReader文本数据读取、StaxEventItemReader XML文件数据读取、JsonItemReader JSON文件数据读取、JdbcPagingItemReader数据库分页数据读取等实现，
+ *  更多可用的实现可以参考：https://docs.spring.io/spring-batch/docs/4.2.x/reference/html/appendix.html#itemReadersAppendix，本文只介绍这四种比较常用的读取数据方式。
+ * @author dongxiaoyong
+ */
+public class MySimpleIteamReader implements ItemReader<String> {
+
+    private Iterator<String> iterator;
+
+    public MySimpleIteamReader(List<String> data) {
+        this.iterator = data.iterator();
+    }
+
+    @Override
+    public String read() throws Exception, UnexpectedInputException, ParseException, NonTransientResourceException {
+        // 数据一个接着一个读取
+        return iterator.hasNext() ? iterator.next() : null;
+    }
+}
+
+```
+
+泛型指定读取数据的格式，这里读取的是`String`类型的`List`，`read()`方法的实现也很简单，就是遍历集合数据。
+
+接着在`com.dongxiayong.springbatchstart.job`包下新建`MySimpleItemReaderDemo`类，用于测试我们定义的`MySimpleItemReader`,`MySimpleItemReaderDemo`的代码如下：
+
+```java
+package com.dongxiayong.springbatchstart.job;
+
+import com.dongxiayong.springbatchstart.reader.MySimpleIteamReader;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
+
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Create By dongxiaoyong on /2020/8/14
+ * description: 自定义Job（使用自定义的Reader读取数据）
+ *
+ * @author dongxiaoyong
+ */
+@Component
+public class MySimpleItemReaderDemo {
+
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job mySimpleItemReaderJob() {
+        return jobBuilderFactory.get("mySimpleItemReaderJob")
+                .start(step())
+                .build();
+    }
+
+    private Step step() {
+        return stepBuilderFactory.get("step")
+                .<String, String>chunk(2)
+                .reader(mySimpleItemReader())
+                .writer(list -> list.forEach(System.out::println))  // 简单输出，后面再详细介绍writer
+                .build();
+    }
+
+    private ItemReader<String> mySimpleItemReader() {
+        List<String> data = Arrays.asList("java", "c++", "javascript", "python");
+        return new MySimpleIteamReader(data);
+    }
+}
+
+```
+
+上面代码中，我们通过`mySimpleItemReader()`方法创建了一个`MySimpleIteamReader`，并且传入了List数据。上面代码大体和上一节中介绍的差不多，最主要的区别就是Step的创建过程稍有不同。
+
+在`MySimpleItemReaderDemo`类中，我们通过`StepBuilderFactory`创建步骤Step，不过不再是使用`tasklet()`方法创建，而是使用`chunk()`方法。chunk字面上的意思是“块”的意思，可以简单理解为数据块，泛型`<String, String>`用于指定读取的数据和输出的数据类型，构造器入参指定了数据块的大小，比如指定为2时表示每当读取2组数据后做一次数据输出处理。接着`reader()`方法指定读取数据的方式，该方法接收`ItemReader`的实现类，这里使用的是我们自定义的`MySimpleIteamReader`。`writer()`方法指定数据输出方式，因为这块不是本文的重点，所以先简单遍历输出即可。
+
+启动项目，控制台日志打印如下：
+
+```java
 2020-09-12 16:46:14.911  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=mySimpleItemReaderJob]] launched with the following parameters: [{}]
 2020-09-12 16:46:14.931  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step]
 java
@@ -1526,39 +1555,281 @@ javascript
 python
 2020-09-12 16:46:14.962  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step] executed in 30ms
 2020-09-12 16:46:14.973  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=mySimpleItemReaderJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 57ms
-2020-09-12 16:46:14.992  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=parentJob2]] launched with the following parameters: [{}]
-2020-09-12 16:46:15.014  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [childJobOneStep]
-2020-09-12 16:46:15.047  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobOne]] launched with the following parameters: [{}]
-2020-09-12 16:46:15.069  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
-子任务一执行步骤一操作。。。
-2020-09-12 16:46:15.089  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 20ms
-2020-09-12 16:46:15.111  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
-子任务一执行步骤二操作。。。
-2020-09-12 16:46:15.128  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 17ms
-2020-09-12 16:46:15.142  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobOne]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 89ms
-2020-09-12 16:46:15.179  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [childJobOneStep] executed in 165ms
-2020-09-12 16:46:15.197  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [childJobTwoStep]
-2020-09-12 16:46:15.216  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobTwo]] launched with the following parameters: [{}]
-2020-09-12 16:46:15.236  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
-子任务二执行步骤三操作。。。
-2020-09-12 16:46:15.253  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 17ms
-2020-09-12 16:46:15.275  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step4]
-子任务二执行步骤四操作。。。
-2020-09-12 16:46:15.293  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step4] executed in 18ms
-2020-09-12 16:46:15.310  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=childJobTwo]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 88ms
-2020-09-12 16:46:15.315  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [childJobTwoStep] executed in 118ms
-2020-09-12 16:46:15.328  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=parentJob2]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 330ms
-2020-09-12 16:46:15.349  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=splitJob]] launched with the following parameters: [{}]
-2020-09-12 16:46:15.392  INFO 4316 --- [cTaskExecutor-1] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step3]
-2020-09-12 16:46:15.400  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step1]
-执行步骤三操作。。。
-执行步骤一操作。。。
-2020-09-12 16:46:15.421  INFO 4316 --- [cTaskExecutor-1] o.s.batch.core.step.AbstractStep         : Step: [step3] executed in 29ms
-2020-09-12 16:46:15.422  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.step.AbstractStep         : Step: [step1] executed in 21ms
-2020-09-12 16:46:15.445  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step2]
-执行步骤二操作。。。
-2020-09-12 16:46:15.464  INFO 4316 --- [cTaskExecutor-2] o.s.batch.core.step.AbstractStep         : Step: [step2] executed in 19ms
-2020-09-12 16:46:15.477  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [FlowJob: [name=splitJob]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 123ms
+```
+
+### 3、文本数据读取
+
+`Spring Batch`读取文本类型数据可以通过`FlatFileItemReader`实现，在演示怎么使用之前，我们先准备好数据文件。
+
+在`resources`目录下新建`file`文件，内容如下：
+
+```
+// 演示文件数据读取
+1,11,12,13
+2,21,22,23
+3,31,32,33
+4,41,42,43
+5,51,52,53
+6,61,62,
+```
+
+`file`的数据是一行一行以逗号分隔的数据（在批处理业务中，文本类型的数据文件一般都是有一定规律的）。在文本数据读取的过程中，我们需要将读取的数据转换为`POJO`对象存储，所以我们需要创建一个与之对应的`POJO`对象。在`com.dongxiayong.springbatchstart`包下新建`entity`包，然后在该包下新建`TestFileData`类：
+
+```java
+package com.dongxiayong.springbatchstart.entity;
+
+/**
+ * Create By dongxiaoyong on /2020/9/8
+ * description: 文本实体
+ *
+ * @author dongxiaoyong
+ */
+public class TestFileData {
+    /**
+     * id属性
+     */
+    private int id;
+    /**
+     * 文本属性1
+     */
+    private String field1;
+    /**
+     * 文本属性2
+     */
+    private String field2;
+    /**
+     * 文本属性3
+     */
+    private String field3;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getField1() {
+        return field1;
+    }
+
+    public void setField1(String field1) {
+        this.field1 = field1;
+    }
+
+    public String getField2() {
+        return field2;
+    }
+
+    public void setField2(String field2) {
+        this.field2 = field2;
+    }
+
+    public String getField3() {
+        return field3;
+    }
+
+    public void setField3(String field3) {
+        this.field3 = field3;
+    }
+
+    @Override
+    public String toString() {
+        return "TestFileData{" +
+                "id=" + id +
+                ", field1='" + field1 + '\'' +
+                ", field2='" + field2 + '\'' +
+                ", field3='" + field3 + '\'' +
+                '}';
+    }
+
+    public TestFileData() {
+        super();
+    }
+
+    public TestFileData(int id, String field1, String field2, String field3) {
+        this.id = id;
+        this.field1 = field1;
+        this.field2 = field2;
+        this.field3 = field3;
+    }
+}
+
+```
+
+因为`file`文本中的一行数据经过逗号分隔后为1、11、12、13，所以我们创建的与之对应的`POJO` `TestFileData`包含4个属性`id`、`field1`、`field2`和`field3`。
+
+接着在job包下新建`FileItemReaderDemo`：
+
+```java
+package com.dongxiayong.springbatchstart.reader;
+
+import com.dongxiayong.springbatchstart.entity.TestFileData;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.mapping.DefaultLineMapper;
+import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.item.file.transform.FieldSet;
+import org.springframework.batch.item.file.transform.FixedLengthTokenizer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
+/**
+ * Create By dongxiaoyong on /2020/9/8
+ * description: 文本数据读取
+ *
+ * @author dongxiaoyong
+ */
+@Component
+public class FileItemReaderDemo {
+    //任务创建工厂
+    @Autowired
+    private JobBuilderFactory jobBuilderFactory;
+
+    //步骤创建工厂
+    @Autowired
+    private StepBuilderFactory stepBuilderFactory;
+
+    @Bean
+    public Job fileItemReaderJob() {
+        return jobBuilderFactory.get("fileItemReaderJob2")
+                .start(step())
+                .build();
+    }
+
+    public Step step() {
+        return stepBuilderFactory.get("step")
+                .<TestFileData, TestFileData>chunk(2)
+                .reader(fileItemReaderByDelimitedLineTokenizer())
+                .writer(list -> list.forEach((System.out::println)))
+                .build();
+    }
+
+    /**
+     * 以固定分隔符处理行数据读取
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/9/8 16:42
+     * @return: org.springframework.batch.item.ItemReader<com.dongxiayong.springbatchstart.entity.TestFileData>
+     */
+
+    private ItemReader<TestFileData> fileItemReaderByDelimitedLineTokenizer() {
+        FlatFileItemReader<TestFileData> reader = new FlatFileItemReader<>();
+        reader.setResource(new ClassPathResource("file"));//设置文件资源地址
+        reader.setLinesToSkip(1);//忽略第一行
+
+        //AbstractLineTokenizer的三个实现类之一，以固定分隔符处理行数据读取
+        //使用默认构造器的时候，使用逗号作分隔符，也可以通过有参构造来指定分隔符
+        //DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer(";");
+        DelimitedLineTokenizer delimitedLineTokenizer = new DelimitedLineTokenizer();
+
+        //设置属性名，类似表头
+        delimitedLineTokenizer.setNames("id", "field1", "field2", "field3");
+
+        //将每行数据转换成TestFileData实体对象
+        DefaultLineMapper<TestFileData> mapper = new DefaultLineMapper<>();
+        //设置LineTokenizer
+        mapper.setLineTokenizer(delimitedLineTokenizer);
+
+        //设置映射方式，即读取到的文本怎么转换成对应的POJO
+        mapper.setFieldSetMapper(fieldSet -> {
+            TestFileData data = new TestFileData();
+            data.setId(fieldSet.readInt("id"));
+            data.setField1(fieldSet.readString("field1"));
+            data.setField2(fieldSet.readString("field2"));
+            data.setField3(fieldSet.readString("field3"));
+            return data;
+        });
+        reader.setLineMapper(mapper);
+
+        return reader;
+    }
+
+
+    /**
+     * 通过指定的固定长度来截取数据
+     *
+     * @param
+     * @Author :dongxiaoyong
+     * @Date : 2020/9/8 16:42
+     * @return: org.springframework.batch.item.ItemReader<com.dongxiayong.springbatchstart.entity.TestFileData>
+     */
+
+    private ItemReader<TestFileData> fileItemReaderByFixedLengthTokenizer() {
+        FlatFileItemReader<TestFileData> reader = new FlatFileItemReader<>();
+        reader.setResource(new ClassPathResource("file"));//设置文件资源地址
+        reader.setLinesToSkip(1);//忽略第一行
+
+        //AbstractLineTokenizer的三个实现类之一，以固定分隔符处理行数据读取
+        //使用默认构造器的时候，使用逗号作分隔符，也可以通过有参构造来指定分隔符
+        FixedLengthTokenizer fixedLengthTokenizer = new FixedLengthTokenizer();
+
+        //设置属性名，类似表头
+        fixedLengthTokenizer.setNames("id", "field1", "field2", "field3");
+
+        //将每行数据转换成TestFileData实体对象
+        DefaultLineMapper<TestFileData> mapper = new DefaultLineMapper<>();
+        //设置LineTokenizer
+        mapper.setLineTokenizer(fixedLengthTokenizer);
+
+        //设置映射方式，即读取到的文本怎么转换成对应的POJO
+        mapper.setFieldSetMapper(fieldSet -> {
+            TestFileData data = new TestFileData();
+            data.setId(fieldSet.readInt("id"));
+            data.setField1(fieldSet.readString("field1"));
+            data.setField2(fieldSet.readString("field2"));
+            data.setField3(fieldSet.readString("field3"));
+            return data;
+        });
+        reader.setLineMapper(mapper);
+
+        return reader;
+    }
+}
+
+```
+
+上面代码中，我们在`fileItemReader()`方法里编写了具体的文本数据读取代码，过程参考注释即可。`DelimitedLineTokenizer`分隔符行处理器的默认构造器源码如下所示：
+
+```java
+/**
+	 * Create a new instance of the {@link DelimitedLineTokenizer} class for the
+	 * common case where the delimiter is a {@link #DELIMITER_COMMA comma}.
+	 *
+	 * @see #DelimitedLineTokenizer(String)
+	 * @see #DELIMITER_COMMA
+	 */
+	public DelimitedLineTokenizer() {
+		this(DELIMITER_COMMA);
+	}
+
+```
+
+常量`DELIMITER_COMMA`的值为`public static final String DELIMITER_COMMA = ",";`，假如我们的数据并不是用逗号分隔，而是用`|`等字符分隔的话，可以使用它的有参构造器指定：
+
+```
+
+DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer("|");
+```
+
+`DelimitedLineTokenizer`是`AbstractLineTokenizer`三个实现类之一：
+
+![image-20200914235823400](.\images\image-20200914235823400.png)
+
+顾名思义，`FixedLengthTokenizer`通过指定的固定长度来截取数据，`RegexLineTokenizer`通过正则表达式来匹配数据，这里就不演示了，有兴趣的可以自己玩玩。
+
+编写好`FileItemReaderDemo`后，启动项目，控制台日志打印如下：
+
+```java
 2020-09-12 16:46:15.498  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=fileItemReaderJob2]] launched with the following parameters: [{}]
 2020-09-12 16:46:15.517  INFO 4316 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [step]
 TestFileData{id=1, field1='11', field2='12', field3='13'}
@@ -1569,6 +1840,9 @@ TestFileData{id=5, field1='51', field2='52', field3='53'}
 TestFileData{id=6, field1='61', field2='62', field3='63'}
 2020-09-12 16:46:15.650  INFO 4316 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [step] executed in 133ms
 2020-09-12 16:46:15.661  INFO 4316 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=fileItemReaderJob2]] completed with the following parameters: [{}] and the following status: [COMPLETED] in 158ms
-
 ```
+
+### 4、数据库数据读取
+
+
 
