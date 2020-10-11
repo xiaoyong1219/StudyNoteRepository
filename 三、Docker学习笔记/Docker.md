@@ -62,7 +62,9 @@ Docker官方建议将Docker安装在Linux操作系统上。当然，Docker也可
 sudo yum -y remove docker
 ```
 
-执行该命令只会移除旧版本的Docker，/var/lib/docker目录中的内容不会被删除，因此，旧版本Docker所创建的镜像、容器、卷等都会保留下来。
+![image-20201010194318592](images/image-20201010194318592.png)
+
+执行该命令只会移除旧版本的`Docker`，`/var/lib/docker`目录中的内容不会被删除，因此，旧版本Docker所创建的镜像、容器、卷等都会保留下来。
 
 3. **设置yum源**
 
@@ -74,13 +76,13 @@ Docker有多种安装方式，例如yum安装、rpm包安装、shell安装等，
    sudo yum install -y yum-utils
    ```
 
-2. **执行以下命令，添加Docker的yum源。**
+   ![image-20201010203322774](images/image-20201010203322774.png)**执行以下命令，添加Docker的yum源。**
 
    ```shell
    sudo yum-config-manager \ --add-repo \ https://docs.docker.comn/engine/installation/linux/repo_files/repo_files/centos/docker.repo
    ```
 
-3. **[可选]启用测试**
+2. **[可选]启用测试**
 
    測試仓库包含在docker.repo文件中，但默认情况下是禁用的。如需启用测试仓库，可使用以下命令：
 
