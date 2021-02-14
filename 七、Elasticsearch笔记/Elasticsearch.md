@@ -397,7 +397,7 @@ To forever, study every day,good good up #文档2包含的内容
 
 ik分词器的config目录中添加自定义字典文件`dongxiaoyong.dic`，在文件中添加字典词语,并修改ik分词器的配置文件`IKAnalyzer.cfg.xml`，指明字典文件路径
 
-![image-20210213210300059](images/image-20210213210300059.png)
+![image-20210214160457323](images/image-20210214160457323.png)
 
 ![image-20210213205745077](images/image-20210213205745077.png)
 
