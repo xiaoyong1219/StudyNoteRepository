@@ -207,12 +207,12 @@ i18n.locale: "zh-CN"
 
 > Elasticsearch是面向文档的，下面是关系型数据库和Elasticsearch的客观比对，一切都是JSON
 
-|  Relational DB    |   ELasticsearch   |
-| ---- | ---- |
-|  数据库（database）    |  索引（indices）    |
-|  表（tables）    | types ==慢慢被弃用==     |
-|  行（rows）    |  文档（documents）    |
-|  列（columns）  | 字段（fields）     |
+| Relational DB      | ELasticsearch        |
+| ------------------ | -------------------- |
+| 数据库（database） | 索引（indices）      |
+| 表（tables）       | types ==慢慢被弃用== |
+| 行（rows）         | 文档（documents）    |
+| 列（columns）      | 字段（fields）       |
 
 Elasticsearch（集群）中可以包含多个索引（数据库），每个索引中可以包含多个类型（表），每个类型下又包含多个文档（行），每个文档中又包含多个字段（列）
 
@@ -338,6 +338,7 @@ To forever, study every day,good good up #文档2包含的内容
     </tr>
 </table>
 
+
 如果要搜索含有python标签的文章，那相对应查找所有原始数据而言，查找倒排索引后的数据会快很多。只需要查看标签这一栏，然后获取相关的文章ID即可。完全过滤掉无关其他数据，提高搜索效率；
 
 **Elasticsearch索引和Lucene索引的对比**
@@ -413,16 +414,18 @@ ik分词器的config目录中添加自定义字典文件`dongxiaoyong.dic`，在
 
 基本Rest命令说明
 
-method|url地址|描述
---|--|--
-PUT|localhost:9200/索引名/类型名称/文档id|创建文档（指定文档id）
-POST|localhost:9200/索引名称/类型名称|创建文档（随机文档id）
-POST|localhost:9200/索引名称/类型名称/文档id/_update|修改文档
-DELETE|localhost:9200/索引名称/类型名称/文档id|删除文档
-GET|localhost:9200/索引名称/类型名称/文档id|通过文档id查询文档
-POST|localhost:9200/索引名称/类型名称/_search|查询所有数据
+| method | url地址                                         | 描述                   |
+| ------ | ----------------------------------------------- | ---------------------- |
+| PUT    | localhost:9200/索引名/类型名称/文档id           | 创建文档（指定文档id） |
+| POST   | localhost:9200/索引名称/类型名称                | 创建文档（随机文档id） |
+| POST   | localhost:9200/索引名称/类型名称/文档id/_update | 修改文档               |
+| DELETE | localhost:9200/索引名称/类型名称/文档id         | 删除文档               |
+| GET    | localhost:9200/索引名称/类型名称/文档id         | 通过文档id查询文档     |
+| POST   | localhost:9200/索引名称/类型名称/_search        | 查询所有数据           |
 
 > 基础测试（使用**kibana**操作） http://localhost:5601
+
+### 关于索引的基本操作
 
 1. ##### 创建一个索引
 
@@ -447,13 +450,16 @@ PUT /索引名称/~类型名称~/文档id
 
    - 数值类型
      <u>long</u>,<u>integer</u>,<u>short</u>,<u>byte</u>,<u>double</u>,<u>float</u>,<u>halffloat</u>,<u>scaledfloat</u>
-     
+
    - 日期类型
      <u>date</u>
+
    - 布尔值类型
      <u>boolean</u>
+
    - 二进制类型
      <u>binary</u>
+
    - 等等......
 
 4. 指定字段的类型
@@ -481,22 +487,22 @@ PUT /索引名称/~类型名称~/文档id
 
 返回信息
 
-| 返回字段           | 原文 | 含义 |
-| ------------------ | ---- | ---- |
-| epoch              | seconds since 1970-01-01 00:00:00 | 自标准时间(1970-01-01 00:00:00)以来的秒数 |
-| timestamp          | time in HH:MM:SS | 时分秒，utc时区 |
-| cluster            | cluster name | 集群名称 |
-| status             | health status | 集群状态 |
-| node.total         | total number of nodes | 节点总数 |
-| node.data          | number of nodes that can store data | 数据节点总数 |
-| shards             | total number of shards | 分片总数 |
-| pri                | number of primary shards | 主分片总数 |
-| relo               | number of relocating nodes | 复制节点总数 |
-| init               | number of initializing nodes | 初始化节点总数 |
-| unassign           | number of unassigned shards | 未分配分片总数 |
-| pending_tasks      | number of pending tasks | 待定任务总数 |
-| max_task_wait_time | wait time of longest task pending | 等待最长任务的等待时间 |
-| active_shards_percnet | active number of shards in percent | 激活分片百分比 |
+| 返回字段              | 原文                                | 含义                                      |
+| --------------------- | ----------------------------------- | ----------------------------------------- |
+| epoch                 | seconds since 1970-01-01 00:00:00   | 自标准时间(1970-01-01 00:00:00)以来的秒数 |
+| timestamp             | time in HH:MM:SS                    | 时分秒，utc时区                           |
+| cluster               | cluster name                        | 集群名称                                  |
+| status                | health status                       | 集群状态                                  |
+| node.total            | total number of nodes               | 节点总数                                  |
+| node.data             | number of nodes that can store data | 数据节点总数                              |
+| shards                | total number of shards              | 分片总数                                  |
+| pri                   | number of primary shards            | 主分片总数                                |
+| relo                  | number of relocating nodes          | 复制节点总数                              |
+| init                  | number of initializing nodes        | 初始化节点总数                            |
+| unassign              | number of unassigned shards         | 未分配分片总数                            |
+| pending_tasks         | number of pending tasks             | 待定任务总数                              |
+| max_task_wait_time    | wait time of longest task pending   | 等待最长任务的等待时间                    |
+| active_shards_percnet | active number of shards in percent  | 激活分片百分比                            |
 
 
 ![image-20210213233704718](images/image-20210213233704718.png)
@@ -522,7 +528,7 @@ PUT /索引名称/~类型名称~/文档id
 
 3. `GET _cat/master`
 
-    获取master节点信息
+   获取master节点信息
 
    返回信息：
 
@@ -573,3 +579,88 @@ PUT /索引名称/~类型名称~/文档id
 | name         | node name                                                    | 节点名称         |
 
 ![image-20210214000944799](images/image-20210214000944799.png)
+
+6. `GET _cat/pending_tasks?v`
+
+   获取正在等待的任务
+
+   返回信息：
+
+   | 返回字段    | 原文                            | 含义               |
+   | ----------- | ------------------------------- | ------------------ |
+   | insertOrder | task insertion order            | 任务插入顺序       |
+   | timeInQueue | how long task has been in queue | 任务排队了多长时间 |
+   | priority    | task priority                   | 任务优先级         |
+   | source      | task source                     | 任务源             |
+
+![image-20210214234158268](images/image-20210214234158268.png)
+
+
+
+7. `GET _cat/plugins?v`
+
+   查看节点上正在运行的插件
+
+   ![image-20210218160701397](images/image-20210218160701397.png)
+
+返回信息：
+
+| 返回字段  | 原文              | 含义     |
+| --------- | ----------------- | -------- |
+| name      | node name         | 节点名称 |
+| component | component         | 插件名称 |
+| version   | component version | 插件版本 |
+
+还有其他的cat命令暂不做具体列举，具体可参照：https://blog.csdn.net/qq_28988969/article/details/105079476
+
+> 额外命令（`GET _cat/xxx命令?参数`），可以多个参数一起使用，用`&`连接
+
+1. v显示表头
+
+   `GET _cat/health?v`
+
+2. help显示命令返回的参数说明
+
+   `GET _cat/health?help`
+
+3. h选择要显示的列
+
+   `GET _cat/health?v&apoch,cluster`
+
+4. format设置返回的内容格式
+
+   支持 json，yaml，text，smile，cbor
+
+   `GET _cat/health?format=json`
+
+5. sort排序
+
+   `GET _cat/indices?v&s=docs.count:desc,store.size:asc` 
+   
+   
+> 更新
+
+1. 使用`PUT`命令直接覆盖（未赋值的字段也会被覆盖）
+
+![image-20210218163837385](images/image-20210218163837385.png)
+
+2. 使用`POST`命令更新，只更新指定字段
+
+![image-20210218164531020](images/image-20210218164531020.png)
+
+
+
+> 删除
+
+通过`DELETE`命令实现删除，根据请求路径参数来判断是删除索引还是文档
+
+- 删除索引
+
+![image-20210218164817357](images/image-20210218164817357.png)
+
+- 删除文档
+
+![image-20210218164957402](images/image-20210218164957402.png)
+
+### 关于文档的基本操作
+
