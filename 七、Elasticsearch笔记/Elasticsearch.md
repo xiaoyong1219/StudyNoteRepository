@@ -1,3 +1,5 @@
+
+
 ## Elasticsearch
 
 ### Elasticsearch概述
@@ -662,5 +664,104 @@ PUT /索引名称/~类型名称~/文档id
 
 ![image-20210218164957402](images/image-20210218164957402.png)
 
-### 关于文档的基本操作
+### 关于文档的基本操作（重点）
 
+> 基本操作
+
+1. 添加数据
+
+   ```java
+   PUT /kuangshen/user/1
+   {
+     "name":"狂神说",
+     "age":23,
+     "desc":"一顿操作猛如虎，一看工资2500",
+     "tags":["技术宅","温暖","暖男"]
+   }
+   ```
+
+   ![image-20210218220810320](images\image-20210218220810320.png)
+
+2. 获取数据
+
+```java
+GET /kuangshen/user/1
+```
+
+![image-20210218221935713](images\image-20210218221935713.png)
+
+3. 更新数据
+
+   1. `PUT` 覆盖更新
+
+      这里 age 字段不赋值，更新后直接为空
+
+```java
+PUT /kuangshen/user/3
+{
+  "name":"李四233",
+  "desc":"mmp，不知道如何形容",
+  "tags":["靓女","旅游","唱歌"]
+}
+```
+
+![image-20210218223338555](images\image-20210218223338555.png)
+
+![image-20210218223240729](images\image-20210218223240729.png)
+
+2. `POST`增量更新
+
+```java
+POST /kuangshen/user/3/_update
+{
+    "doc":{
+        "name":"李四",
+        "age":30
+    }
+}
+```
+
+只增量更新 `name` 和 `age` 字段，其他字段保持原来的值不变
+
+![image-20210218223647445](images\image-20210218223647445.png)
+
+![image-20210218223849510](images\image-20210218223849510.png)
+
+
+
+4. 简单的搜索
+
+   1. 根据`id`获取
+
+      ```java
+      GET /kuangshen/use/3   
+      ```
+
+      
+
+      ![image-20210218225547899](images\image-20210218225547899.png)
+   
+      2. 简单的条件查询
+   
+         ```java
+         GET /kuangshen/user/_search?q=name:李四
+         ```
+   
+         ![image-20210218225405327](images\image-20210218225547899.png)
+
+
+
+
+
+
+> 复杂操作搜索（排序，分頁，高亮，模糊搜索，精准搜索）
+
+![image-20210218233434647](images\image-20210218233434647.png)
+
+指定输出结果字段：
+
+![image-20210218233824170](images/image-20210218233824170.png)
+
+我们之后使用`Java`操作`es`，所有的方法和对象就是这里面的`key`！
+
+> 排序
