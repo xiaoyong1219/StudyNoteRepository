@@ -1147,3 +1147,530 @@ class EsApiApplicationTests {
 }
 ```
 
+
+
+#### 实战
+
+最终的效果：
+
+![image-20210224103156248](images/image-20210224103156248.png)
+
+#### 爬虫
+
+> 数据问题：数据库获取，消息队列中获取，都可以成为数据源，爬虫
+
+爬取数据：获取请求返回的页面信息，筛选出我们想要的数据就可以了
+
+`jsop`包
+
+1. 导入依赖
+
+   ```xml
+   <!-- 解析网页信息 （jsoup解析网页，Tika可爬取电影、音乐等）-->
+           <dependency>
+               <groupId>org.jsoup</groupId>
+               <artifactId>jsoup</artifactId>
+               <version>1.10.2</version>
+           </dependency>
+   ```
+
+2. 代码
+
+   ```java
+   package com.xiaoyong.es_api.util;
+   
+   import com.xiaoyong.es_api.pojo.Content;
+   import org.jsoup.Jsoup;
+   import org.jsoup.nodes.Document;
+   import org.jsoup.nodes.Element;
+   import org.jsoup.select.Elements;
+   
+   import java.io.IOException;
+   import java.net.URL;
+   import java.util.ArrayList;
+   
+   /**
+    * Create By dongxiaoyong on /2021/2/24
+    * description: 爬取京东搜索页面信息
+    *
+    * @author dongxiaoyong
+    */
+   public class HtmlParseUtil {
+   
+       /**
+        * 爬取京东搜索页面信息封装成实体列表
+        *
+        * @param keyword
+        * @Author :dongxiaoyong
+        * @Date : 2021/2/25 15:21
+        * @return: java.util.ArrayList<com.xiaoyong.es_api.pojo.Content>
+        */
+   
+       public static ArrayList<Content> parseJdHtml(String keyword) throws IOException {
+           ArrayList<Content> contentArrayList = new ArrayList<>();
+           //获取请求
+           String url = "https://search.jd.com/Search?keyword=" + keyword + "&enc=utf-8&wq=" + keyword + "&pvid=6c2f8c8298cf43baad017524ca06e528";
+           //解析网页(Jsoup返回Document就是浏览器Document对象)
+           Document document = Jsoup.parse(new URL(url), 30000);
+           //所有你在js中可以使用的方法，这里都可以使用
+           Element element = document.getElementById("J_goodsList");
+           if (element != null) {
+               //获取所有的li元素
+               Elements elements = element.getElementsByTag("li");
+               if (elements != null) {
+                   for (Element ele : elements) {
+                       //关于这种图片特别多的网站，所有的图片都是延迟加载的，图片属性初始访问时候一般src值是空，京东的是先放在data-lazy-img属性上
+                       String img = ele.getElementsByTag("img").eq(0).attr("data-lazy-img");
+                       String price = ele.getElementsByClass("p-price").eq(0).text();
+                       String title = ele.getElementsByClass("p-name").eq(0).text();
+                       String shopName = ele.getElementsByClass("p-shopnum").eq(0).text();
+                       Content content = new Content(title, price, img, shopName);
+                       contentArrayList.add(content);
+                   }
+               }
+           }
+           return contentArrayList;
+       }
+   
+       public static void main(String[] args) throws IOException {
+           parseJdHtml("vue").forEach(System.out::println);
+       }
+   }
+   ```
+
+   
+
+#### 前后端分离
+
+1. 后端代码
+
+   ```java
+   package com.xiaoyong.es_api.service;
+   
+   import com.alibaba.fastjson.JSON;
+   import com.xiaoyong.es_api.pojo.Content;
+   import com.xiaoyong.es_api.util.ESConstant;
+   import com.xiaoyong.es_api.util.HtmlParseUtil;
+   import org.elasticsearch.action.bulk.BulkRequest;
+   import org.elasticsearch.action.bulk.BulkResponse;
+   import org.elasticsearch.action.index.IndexRequest;
+   import org.elasticsearch.action.search.SearchRequest;
+   import org.elasticsearch.action.search.SearchResponse;
+   import org.elasticsearch.client.RequestOptions;
+   import org.elasticsearch.client.RestHighLevelClient;
+   import org.elasticsearch.common.text.Text;
+   import org.elasticsearch.common.unit.TimeValue;
+   import org.elasticsearch.common.xcontent.XContentType;
+   import org.elasticsearch.index.query.QueryBuilders;
+   import org.elasticsearch.index.query.TermQueryBuilder;
+   import org.elasticsearch.search.SearchHit;
+   import org.elasticsearch.search.builder.SearchSourceBuilder;
+   import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+   import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Service;
+   
+   import java.io.IOException;
+   import java.util.ArrayList;
+   import java.util.Map;
+   import java.util.concurrent.TimeUnit;
+   
+   /**
+    * Create By dongxiaoyong on /2021/2/24
+    * description: 内容Service
+    *
+    * @author dongxiaoyong
+    */
+   @Service
+   public class ContentService {
+   
+       @Autowired
+       private RestHighLevelClient restHighLevelClient;
+   
+       /**
+        * 根据传入的关键字，获取京东页面信息，批量保存到ES索引中
+        *
+        * @param keyword
+        * @Author :dongxiaoyong
+        * @Date : 2021/2/24 20:41
+        * @return: java.lang.Boolean
+        */
+   
+       public Boolean parseJdToEs(String keyword) throws IOException {
+           BulkRequest bulkRequest = new BulkRequest();
+           bulkRequest.timeout("2m");
+   
+           ArrayList<Content> contents = HtmlParseUtil.parseJdHtml(keyword);
+           if (contents != null && contents.size() > 0) {
+               for (int i = 0; i < contents.size(); i++) {
+                   bulkRequest.add(
+                           new IndexRequest(ESConstant.ES_JD_GOODS_INDEX)
+                                   .id(String.valueOf(i + 1))
+                                   .source(JSON.toJSONString(contents.get(i)), XContentType.JSON));
+               }
+               BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+               return !bulkResponse.hasFailures();
+           }
+           return false;
+       }
+   
+   
+       /**
+        * 根据关键字、分页查询ES文档
+        *
+        * @param keyword
+        * @param pageNo
+        * @param pageSize
+        * @Author :dongxiaoyong
+        * @Date : 2021/2/24 21:01
+        * @return: java.util.List<java.util.Map < java.lang.String, java.lang.Object>>
+        */
+   
+       public ArrayList<Map<String, Object>> search(String keyword, int pageNo, int pageSize) throws IOException {
+           if (pageNo < 0) {
+               pageNo = 0;
+           }
+           if (pageSize < 1) {
+               pageSize = 10;
+           }
+   
+           //条件搜索
+           SearchRequest searchRequest = new SearchRequest(ESConstant.ES_JD_GOODS_INDEX);
+           SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+   
+           //分页
+           searchSourceBuilder.from(pageNo);
+           searchSourceBuilder.size(pageSize);
+   
+           //精准匹配查询
+           TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("title", keyword);
+           searchSourceBuilder.query(termQueryBuilder);
+           searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+   
+           //执行搜索
+           searchRequest.source(searchSourceBuilder);
+           SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+           //解析结果
+           ArrayList<Map<String, Object>> list = new ArrayList<>();
+           for (SearchHit hit : searchResponse.getHits().getHits()) {
+               list.add(hit.getSourceAsMap());
+           }
+           //es中没有匹配的数据，再去访问京东界面，将信息保存到es，再进行查询解析
+           if (list.size() < 1) {
+               if (parseJdToEs(keyword)) {
+                   list = search(keyword, pageNo, pageSize);
+               }
+           }
+           return list;
+       }
+   
+       /**
+        * 根据关键字、分页查询ES文档并且高亮关键字返回
+        *
+        * @param keyword
+        * @param pageNo
+        * @param pageSize
+        * @Author :dongxiaoyong
+        * @Date : 2021/2/25 15:12
+        * @return: java.util.ArrayList<java.util.Map < java.lang.String, java.lang.Object>>
+        */
+   
+       public ArrayList<Map<String, Object>> searchHighLight(String keyword, int pageNo, int pageSize) throws IOException {
+           if (pageNo < 0) {
+               pageNo = 0;
+           }
+           if (pageSize < 1) {
+               pageSize = 10;
+           }
+           SearchRequest searchRequest = new SearchRequest(ESConstant.ES_JD_GOODS_INDEX);
+           SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+   
+           //分页
+           searchSourceBuilder.from(pageNo);
+           searchSourceBuilder.size(pageSize);
+   
+           //精准匹配查询
+           TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("title", keyword);
+           searchSourceBuilder.query(termQueryBuilder);
+           searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+   
+           //高亮
+           HighlightBuilder highlightBuilder = new HighlightBuilder();
+           highlightBuilder.field("title");
+           highlightBuilder.requireFieldMatch(false);//关闭多个高亮显示
+           highlightBuilder.preTags("<span style='color:red'>");
+           highlightBuilder.postTags("</span>");
+           searchSourceBuilder.highlighter(highlightBuilder);
+   
+           //执行搜索
+           searchRequest.source(searchSourceBuilder);
+           SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+   
+           //解析结果
+           ArrayList<Map<String, Object>> list = new ArrayList<>();
+           for (SearchHit hit : searchResponse.getHits().getHits()) {
+               //解析高亮的字段，将原来的字段替换为我们高亮的字段即可
+               Map<String, Object> sourceAsMap = hit.getSourceAsMap();//原来的结果
+               Map<String, HighlightField> highlightFields = hit.getHighlightFields();//高亮的字段结果
+               HighlightField highlightField = highlightFields.get("title");
+               if (highlightField != null) {
+                   Text[] fragments = highlightField.getFragments();
+                   String highlightTitle = "";
+                   for (Text text : fragments) {
+                       highlightTitle = text.string();
+                   }
+                   sourceAsMap.put("title", highlightTitle);//高亮字段替换原来的内容
+               }
+               list.add(sourceAsMap);
+           }
+           //es中没有匹配的数据，再去访问京东界面，将信息保存到es，再进行查询解析
+           if (list.size() < 1) {
+               if (parseJdToEs(keyword)) {
+                   list = search(keyword, pageNo, pageSize);
+               }
+           }
+           return list;
+       }
+   
+   
+   }
+   ```
+
+   
+
+2. 前端
+
+   ```html
+   <!DOCTYPE html>
+   <html xmlns:th="http://www.thymeleaf.org">
+   
+   <head>
+       <meta charset="utf-8"/>
+       <title>ES仿京东实战</title>
+       <link rel="stylesheet" th:href="@{/css/style.css}"/>
+       <script th:src="@{/js/jquery.min.js}"></script>
+   </head>
+   
+   <body class="pg">
+   <div class="page" id="app">
+       <div id="mallPage" class=" mallist tmall- page-not-market ">
+   
+           <!-- 头部搜索 -->
+           <div id="header" class=" header-list-app">
+               <div class="headerLayout">
+                   <div class="headerCon ">
+                       <!-- Logo-->
+                       <h1 id="mallLogo">
+                           <img th:src="@{/images/jdlogo.png}" alt="">
+                       </h1>
+   
+                       <div class="header-extra">
+   
+                           <!--搜索-->
+                           <div id="mallSearch" class="mall-search">
+                               <form name="searchTop" class="mallSearch-form clearfix">
+                                   <fieldset>
+                                       <div class="mallSearch-input clearfix">
+                                           <div class="s-combobox" id="s-combobox-685">
+                                               <div class="s-combobox-input-wrap">
+                                                   <input type="text" v-model="keyword" autocomplete="off" value="dd" id="mq"
+                                                          class="s-combobox-input" aria-haspopup="true">
+                                               </div>
+                                           </div>
+                                           <button type="submit" @click.prevent="searchKey" id="searchbtn">搜索</button>
+                                       </div>
+                                   </fieldset>
+                               </form>
+                               <ul class="relKeyTop">
+                                   <li><a>Java</a></li>
+                                   <li><a>前端</a></li>
+                                   <li><a>Linux</a></li>
+                                   <li><a>大数据</a></li>
+                                   <li><a>理财</a></li>
+                               </ul>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+   
+           <!-- 商品详情页面 -->
+           <div id="content">
+               <div class="main">
+                   <!-- 品牌分类 -->
+                   <form class="navAttrsForm">
+                       <div class="attrs j_NavAttrs" style="display:block">
+                           <div class="brandAttr j_nav_brand">
+                               <div class="j_Brand attr">
+                                   <div class="attrKey">
+                                       品牌
+                                   </div>
+                                   <div class="attrValues">
+                                       <ul class="av-collapse row-2">
+                                           <li><a href="#"> 街尾有条狗 </a></li>
+                                           <li><a href="#"> Java </a></li>
+                                       </ul>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   </form>
+   
+                   <!-- 排序规则 -->
+                   <div class="filter clearfix">
+                       <a class="fSort fSort-cur">综合<i class="f-ico-arrow-d"></i></a>
+                       <a class="fSort">人气<i class="f-ico-arrow-d"></i></a>
+                       <a class="fSort">新品<i class="f-ico-arrow-d"></i></a>
+                       <a class="fSort">销量<i class="f-ico-arrow-d"></i></a>
+                       <a class="fSort">价格<i class="f-ico-triangle-mt"></i><i class="f-ico-triangle-mb"></i></a>
+                   </div>
+   
+                   <!-- 商品详情 -->
+                   <div class="view grid-nosku">
+   
+                       <div class="product" v-for="result in results">
+                           <div class="product-iWrap">
+                               <!--商品封面-->
+                               <div class="productImg-wrap">
+                                   <a class="productImg">
+                                       <img :src="result.img">
+                                   </a>
+                               </div>
+                               <!--价格-->
+                               <p class="productPrice">
+                                   <em>{{result.price}}</em>
+                               </p>
+                               <!--标题-->
+                               <p class="productTitle">
+                                   <a v-html="result.title"></a>
+                               </p>
+                               <!-- 店铺名 -->
+                               <div class="productShop">
+                                   <span>{{result.shopName}} </span>
+                               </div>
+                               <!-- 成交信息 -->
+                               <p class="productStatus">
+                                   <span>月成交<em>999笔</em></span>
+                                   <span>评价 <a>3</a></span>
+                               </p>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+   </div>
+   <script th:src="@{/js/vue.min.js}"></script>
+   <script th:src="@{/js/axios.min.js}"></script>
+   <script>
+       new Vue({
+           el:"#app",
+           data:{
+               keyword: '', //搜索的关键字
+               results: [] //搜索的结果
+           },
+           methods: {
+               searchKey(){
+                   let keyword = this.keyword;
+                   console.log(keyword);
+                   //对接后端接口
+                   axios.get("content/search/" + keyword + "/1/10").then(response=>{
+                       console.log(response);
+                       this.results = response.data;
+                   })
+               }
+           }
+       })
+   </script>
+   
+   </body>
+   </html>
+   ```
+
+   
+
+#### 搜索高亮
+
+- 代码
+
+  ```java
+      /**
+       * 根据关键字、分页查询ES文档并且高亮关键字返回
+       *
+       * @param keyword
+       * @param pageNo
+       * @param pageSize
+       * @Author :dongxiaoyong
+       * @Date : 2021/2/25 15:12
+       * @return: java.util.ArrayList<java.util.Map < java.lang.String, java.lang.Object>>
+       */
+  
+      public ArrayList<Map<String, Object>> searchHighLight(String keyword, int pageNo, int pageSize) throws IOException {
+          if (pageNo < 0) {
+              pageNo = 0;
+          }
+          if (pageSize < 1) {
+              pageSize = 10;
+          }
+          SearchRequest searchRequest = new SearchRequest(ESConstant.ES_JD_GOODS_INDEX);
+          SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+  
+          //分页
+          searchSourceBuilder.from(pageNo);
+          searchSourceBuilder.size(pageSize);
+  
+          //精准匹配查询
+          TermQueryBuilder termQueryBuilder = QueryBuilders.termQuery("title", keyword);
+          searchSourceBuilder.query(termQueryBuilder);
+          searchSourceBuilder.timeout(new TimeValue(60, TimeUnit.SECONDS));
+  
+          //高亮
+          HighlightBuilder highlightBuilder = new HighlightBuilder();
+          highlightBuilder.field("title");
+          highlightBuilder.requireFieldMatch(false);//关闭多个高亮显示
+          highlightBuilder.preTags("<span style='color:red'>");
+          highlightBuilder.postTags("</span>");
+          searchSourceBuilder.highlighter(highlightBuilder);
+  
+          //执行搜索
+          searchRequest.source(searchSourceBuilder);
+          SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+  
+          //解析结果
+          ArrayList<Map<String, Object>> list = new ArrayList<>();
+          for (SearchHit hit : searchResponse.getHits().getHits()) {
+              //解析高亮的字段，将原来的字段替换为我们高亮的字段即可
+              Map<String, Object> sourceAsMap = hit.getSourceAsMap();//原来的结果
+              Map<String, HighlightField> highlightFields = hit.getHighlightFields();//高亮的字段结果
+              HighlightField highlightField = highlightFields.get("title");
+              if (highlightField != null) {
+                  Text[] fragments = highlightField.getFragments();
+                  String highlightTitle = "";
+                  for (Text text : fragments) {
+                      highlightTitle = text.string();
+                  }
+                  sourceAsMap.put("title", highlightTitle);//高亮字段替换原来的内容
+              }
+              list.add(sourceAsMap);
+          }
+          //es中没有匹配的数据，再去访问京东界面，将信息保存到es，再进行查询解析
+          if (list.size() < 1) {
+              if (parseJdToEs(keyword)) {
+                  list = search(keyword, pageNo, pageSize);
+              }
+          }
+          return list;
+      }
+  ```
+
+  
+
+- 效果
+
+![image-20210225152659657](images/image-20210225152659657.png)
+
+
+
+
+
+**代码地址**：https://github.com/xiaoyong1219/es_api
