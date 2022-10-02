@@ -1,6 +1,6 @@
 
 
-  
+[toc]
 
 # 一、Spring Boot 入门
 
@@ -68,19 +68,19 @@
 
 file --> New --> Project
 
-![image-20200509143111451](D:\study\markdown\springboot笔记\images\image-20200509143111451.png)
+![image-20200509143111451](images\image-20200509143111451.png)
 
 选择Maven，选择项目jdk版本
 
-![image-20200509143242926](D:\study\markdown\springboot笔记\images\image-20200509143242926.png)
+![image-20200509143242926](images\image-20200509143242926.png)
 
 填写GroupId、Artifactid、Version信息
 
-![image-20200509143551181](D:\study\markdown\springboot笔记\images\image-20200509143551181.png)
+![image-20200509143551181](images\image-20200509143551181.png)
 
 填写项目名（根据前面填写的ArtifactId自动识别）、项目路径
 
-![image-20200509143305941](D:\study\markdown\springboot笔记\images\image-20200509143305941.png)
+![image-20200509143305941](images\image-20200509143305941.png)
 
 #### 2、导入Spring Boot的相关依赖
 
@@ -186,7 +186,7 @@ public class HelloController {
 
 访问 http://127.0.0.1:8080/hello
 
-![image-20200509150909220](D:\study\markdown\springboot笔记\images\image-20200509150909220.png)
+![image-20200509150909220](images\image-20200509150909220.png)
 
 ####  6、简化部署
 
@@ -204,11 +204,11 @@ public class HelloController {
 
 pom.xml中引入了这个插件后，将项目mvn package打包后，生成的jar就可以直接用java -jar命令启动，
 
-![image-20200509152005160](D:\study\markdown\springboot笔记\images\image-20200509152005160.png)
+![image-20200509152005160](images\image-20200509152005160.png)
 
 不引入该插件的话，直接执行会提示没有主清单属性：
 
-![image-20200509151842347](D:\study\markdown\springboot笔记\images\image-20200509151842347.png)
+![image-20200509151842347](images\image-20200509151842347.png)
 
  
 
@@ -272,7 +272,7 @@ Spring Boot的版本仲裁中心 ；
 
 **spring boot**将所有的功能场景都抽取出来，做成一个个的**starter**(启动器)，只需要在项目里引入这些**starter**，相关场景的所有依赖都会被导入进来，要用什么功能就导入什么场景的启动器。
 
-![image-20200511172810705](D:\study\markdown\springboot笔记\images\image-20200511172810705.png)
+![image-20200511172810705](images\image-20200511172810705.png)
 
 #### 2、主程序入口
 
@@ -406,9 +406,9 @@ spring-boot-autoconfigure-2.0.1.RELEASE.jar；
 
 IDE 都支持使用Spring的项目创建向导快速创建一个Spring Boot项目
 
-#### 二、配置文件
+# 二、配置文件
 
-###### 1、配置文件
+## 1、配置文件
 
 SpringBoot使用一个全局的配置文件，配置文件名是固定的；
 
@@ -428,7 +428,7 @@ YAML：（YAML Ain't Markup Language）
 
 ​    YAML：**以数据为中心**，比json、xml等更适合做配置文件；
 
-###### 2、YAML语法：
+## 2、YAML语法：
 
 以`空格`的缩进来控制层级关系；只要是左对齐的一列数据，都是同一个层级的
 
@@ -484,7 +484,7 @@ person: {name: 张三,gender: 男,age: 22}
 fruits: [苹果,桃子,香蕉]
 ```
 
-###### 3、配置文件值注入
+## 3、配置文件值注入
 
 pom文件加入配置文件处理器依赖
 
@@ -693,7 +693,7 @@ properties文件读取中文乱码问题解决：
 
 **注意：yaml和properties配置文件同时存在，properties配置文件的内容会覆盖yaml配置文件的内容**
 
-###### 4、@Value获取值和@ConfigurationProperties获取值比较
+## 4、@Value获取值和@ConfigurationProperties获取值比较
 
 |                                             | @ConfigurationProperties | @Value     |
 | ------------------------------------------- | ------------------------ | ---------- |
@@ -703,11 +703,11 @@ properties文件读取中文乱码问题解决：
 | JSR303（数据校验）                          | 支持                     | 不支持     |
 | 复杂类型封装                                | 支持                     | 不支持     |
 
-###### 5、Profile
+## 5、Profile
 
 Profile是Spring对不同环境提供不同配置功能的支持，可以通过激活、指定参数等方式快速切换环境
 
-###### 	1、多Profile文件	
+### 	1、多Profile文件	
 
 文件名格式：application-{profile}.properties/yml，例如：
 
@@ -728,7 +728,7 @@ spring.profiles.active=dev
 
 ![image-20200701201621167](images/image-20200701201621167.png)
 
-###### 2、yml支持多文档块方式
+### 2、yml支持多文档块方式
 
 每个文档块使用 **---** 分割
 
@@ -799,11 +799,11 @@ server:
       age: 2
 ```
 
-###### 激活指定profile的三种方式
+### 激活指定profile的三种方式
 
-1. 在配置文件中指定  **spring.profiles.active=dev**（如上）
+1. #### 在配置文件中指定  **spring.profiles.active=dev**（如上）
 
-2. 项目打包后在命令行启动
+2. #### 项目打包后在命令行启动
 
    ```shell
    java -jar xxx.jar --spring.profiles.active=dev；
@@ -813,7 +813,7 @@ server:
 
 ![image-20200701202224008](images/image-20200701202224008.png)
 
-3. 虚拟机参数
+3. #### 虚拟机参数
 
 ```shell
 -Dspring.profiles.active=prod
@@ -823,9 +823,9 @@ server:
 
 ![image-20200701203640280](images/image-20200701203640280.png)
 
-###### 6、日志使用
+## 6、日志使用
 
-**默认配置**
+#### **默认配置**
 
 Springboot默认帮我们设置了info级别的日志
 
@@ -861,7 +861,7 @@ class SpringBoot03LoggingApplicationTests {
 
 ```
 
-**Springboot日志默认配置及格式说明**
+#### **Springboot日志默认配置及格式说明**
 
 ```properties
 #日志级别：trace<debug<info<warn<error，springboot默认使用的是info级别
@@ -893,7 +893,7 @@ logging.pattern.file=%d{yyyy-MM-dd hi24:mm:ss} ==== [%thread] === %-5level === %
 | 指定文件名   | (none)       | my.log   | 输出日志到my.log文件               |
 | (none)       | 指定目录     | /var/log | 输出到指定目录的 spring.log 文件中 |
 
-**自定义日志配置文件**
+#### **自定义日志配置文件**
 
 可以通过在类路径中放上每个日志框架自己的配置文件即可；springboot就不使用他默认配置的
 
@@ -932,13 +932,13 @@ ERROR in ch.qos.logback.core.joran.spi.Interpreter@16:31 - no applicable action 
 
 ![image-20200703204544037](images/image-20200703204544037.png)
 
-#### 三、SpringBoot Web开发
+# 三、SpringBoot Web开发
 
-1. 创建SpringBoot应用，选中我们需要的模块
-2. SpringBoot已经默认将这些场景配置好了，只需要在配置文件中指定少量配置就可以运行起来
-3. 自己编写业务代码
+1. ## 创建SpringBoot应用，选中我们需要的模块
+2. ## SpringBoot已经默认将这些场景配置好了，只需要在配置文件中指定少量配置就可以运行起来
+3. ## 自己编写业务代码
 
-**web自动配置规则**
+## **web自动配置规则**
 
 1. WebMvcAutoConfiguration
 2. WebMvcProperties
@@ -950,7 +950,7 @@ ERROR in ch.qos.logback.core.joran.spi.Interpreter@16:31 - no applicable action 
 8. favicon
 9. 错误处理
 
-**SpringBoot对静态资源的映射规则**
+## **SpringBoot对静态资源的映射规则**
 
 `WebMvcAutoConfiguration`类的`addResourceHandlers`方法：（添加资源映射）
 
@@ -1008,7 +1008,7 @@ http://localhost:8080/webjars/jquery/3.3.1/jquery.js 就可以访问到引入的
 
 ![image-20200704103452119](images/image-20200704103452119.png)
 
-**非webjars，自己的静态资源怎么访问**
+## **非webjars，自己的静态资源怎么访问**
 
 **资源配置类：**
 
