@@ -8,3 +8,5 @@
 5. SpringCloud笔记
 6. Markdown笔记
 7. Elasticsearch笔记
+8. 读书笔记
+9. Canal笔记
